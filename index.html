@@ -24,6 +24,7 @@ nav button[aria-selected=true]{color:var(--ink);box-shadow:inset 0 3px var(--acc
 <div id="warn" class="note" hidden></div>
 <section id="login" hidden><label>Tu correo (te enviamos un código para entrar)</label><input id="em" type="email" autocomplete="email">
 <button class="btn" id="send">Enviar código</button>
+<button class="btn g" id="anon">Entrar sin correo</button><p class="m" style="font-size:13px">Sin correo, tus reportes quedan guardados solo en este navegador. Si borras sus datos, los pierdes.</p>
 <div id="cw" hidden><label>Código que llegó a tu correo</label><input id="cd" inputmode="numeric" autocomplete="one-time-code" maxlength="10"><button class="btn" id="ver">Entrar</button></div><p id="lm" class="m"></p></section>
 <div id="app" hidden>
 <section id="t0"><label>Foto del perrito que encontraste</label><input id="f0" type="file" accept="image/*" capture="environment">
@@ -83,6 +84,7 @@ const up=await sb.storage.from("fotos").upload(path,p.blob,{contentType:"image/j
 const{error}=await sb.from("reports").insert({name:n,zone:z,notes:$("#s1").value.trim(),photo_url:sb.storage.from("fotos").getPublicUrl(path).data.publicUrl,fp:p.fp,pub});if(error)throw error;
 ok.textContent="Reporte publicado. Revísalo en “Mis avisos”.";["#n1","#z1","#s1","#f1"].forEach(s=>$(s).value="")}catch(e){ok.textContent="No se pudo publicar: "+(e.message||"error")}$("#pub").disabled=false};
 $("#send").onclick=async()=>{const{error}=await sb.auth.signInWithOtp({email:$("#em").value.trim()});if(error){$("#lm").textContent="No se pudo enviar: "+error.message;return}$("#cw").hidden=false;$("#lm").textContent="Listo. Revisa tu correo (y Spam) y escribe el código."};
+$("#anon").onclick=async()=>{const{error}=await sb.auth.signInAnonymously();if(error)$("#lm").textContent="No se pudo entrar: "+error.message};
 $("#ver").onclick=async()=>{const{error}=await sb.auth.verifyOtp({email:$("#em").value.trim(),token:$("#cd").value.trim(),type:"email"});$("#lm").textContent=error?"Código incorrecto o vencido. Pide uno nuevo.":""};
 $("#out").onclick=async()=>{await sb.auth.signOut();location.reload()};
 async function start(){const{data:{session}}=await sb.auth.getSession();
