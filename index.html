@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Huellitas MX</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#f6f8fa;--ink:#12263a;--mut:#5b6b7a;--card:#fff;--line:#d8e0e8;--acc:#f2a900}
+@media(prefers-color-scheme:dark){:root{--bg:#0e1b29;--ink:#eef3f8;--mut:#9fb0c0;--card:#162a3d;--line:#27405a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,sans-serif}
+main{max-width:560px;margin:0 auto;padding:16px 16px 90px}h1{font-size:30px;margin:6px 0 2px}
+p.s,.m{color:var(--mut)}label{display:block;font-weight:600;margin:12px 0 4px}
+input,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font:inherit}
+.btn{display:block;width:100%;border:0;border-radius:10px;padding:13px;background:var(--acc);color:#12263a;font:800 16px inherit;margin-top:14px;text-align:center;text-decoration:none}
+.btn.g{background:none;border:1px solid var(--line);color:var(--ink);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin:12px 0;display:flex;gap:12px;flex-wrap:wrap}
+.card img{width:96px;height:96px;object-fit:cover;border-radius:10px}.t{flex:1;min-width:140px}
+.pill{background:var(--acc);color:#12263a;border-radius:99px;padding:2px 10px;font-weight:800;font-size:13px}
+.full{flex-basis:100%}.note{border-left:4px solid var(--acc);padding:6px 12px;color:var(--mut);margin:10px 0}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line)}
+nav button{flex:1;border:0;background:none;color:var(--mut);font:600 15px inherit;padding:14px 4px}
+nav button[aria-selected=true]{color:var(--ink);box-shadow:inset 0 3px var(--acc)}[hidden]{display:none!important}
+</style></head><body><main>
+<h1>Huellitas MX</h1><p class="s">Perritos perdidos y encontrados, con tu contacto protegido.</p>
+<div id="warn" class="note" hidden></div>
+<section id="login" hidden><label>Tu correo (te enviamos un enlace para entrar)</label><input id="em" type="email" autocomplete="email">
+<button class="btn" id="send">Enviar enlace</button><p id="lm" class="m"></p></section>
+<div id="app" hidden>
+<section id="t0"><label>Foto del perrito que encontraste</label><input id="f0" type="file" accept="image/*" capture="environment">
+<label>Zona o colonia (opcional)</label><input id="z0"><button class="btn" id="go">Buscar coincidencias</button><div id="res"></div></section>
+<section id="t1" hidden><label>Nombre de tu perrito</label><input id="n1" maxlength="40"><label>Zona donde se perdió</label><input id="z1" maxlength="60">
+<label>Señas particulares</label><textarea id="s1" rows="2" maxlength="160"></textarea><label>Foto clara</label><input id="f1" type="file" accept="image/*">
+<div class="note">Tu teléfono no se guarda. Quien lo encuentre te escribe con un mensaje cifrado que solo tú puedes abrir.</div>
+<button class="btn" id="pub">Publicar reporte</button><p id="ok1" class="m"></p></section>
+<section id="t2" hidden><div id="mine"></div><button class="btn g" id="out">Cerrar sesión</button></section>
+</div></main>
+<nav id="nav" hidden><button aria-selected="true" data-t="0">Encontré uno</button><button aria-selected="false" data-t="1">Perdí uno</button><button aria-selected="false" data-t="2">Mis avisos</button></nav>
+<script>
+const SUPABASE_URL="https://enkihffbccgscgtsxide.supabase.co", SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVua2loZmZiY2Nnc2NndHN4aWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExNDE5NDMsImV4cCI6MjEwNjcxNzk0M30.uTEu_1stmQpj973fS4vpXvc3Fy3BQJqjQC1MoxbQHSk";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY),$=s=>document.querySelector(s);
+const h=(t,a={},...k)=>{const e=document.createElement(t);for(const x in a)x=="class"?e.className=a[x]:e[x]=a[x];k.flat().forEach(c=>e.append(c));return e};
+let me,priv=null,reports=[],alerts=[];
+document.querySelectorAll("nav button").forEach(b=>b.onclick=async()=>{document.querySelectorAll("nav button").forEach(x=>x.setAttribute("aria-selected",x==b));[0,1,2].forEach(i=>$("#t"+i).hidden=i!=b.dataset.t);if(b.dataset.t==2)await mineLoad()});
+const load=f=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=URL.createObjectURL(f)});
+async function proc(file){const i=await load(file),c=document.createElement("canvas"),x=c.getContext("2d"),k=800/Math.max(i.width,i.height,800);
+c.width=i.width*k;c.height=i.height*k;x.drawImage(i,0,0,c.width,c.height);const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.8));
+c.width=c.height=8;x.drawImage(i,0,0,8,8);const d=x.getImageData(0,0,8,8).data,fp=[];for(let p=0;p<d.length;p+=4)fp.push(d[p],d[p+1],d[p+2]);return{blob,fp}}
+const sim=(a,b)=>{let s=0;for(let i=0;i<a.length;i++)s+=Math.abs(a[i]-b[i]);return Math.max(0,Math.round(100-s/a.length/255*220))};
+const b64=b=>btoa(String.fromCharCode(...new Uint8Array(b))),unb=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const RSA={name:"RSA-OAEP",modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:"SHA-256"};
+async function myKeys(){const{data}=await sb.from("user_keys").select("*").eq("user_id",me).maybeSingle();
+if(data){priv=await crypto.subtle.importKey("jwk",data.priv,RSA,false,["decrypt"]);return data.pub}
+const k=await crypto.subtle.generateKey(RSA,true,["encrypt","decrypt"]);
+const pub=await crypto.subtle.exportKey("jwk",k.publicKey),pv=await crypto.subtle.exportKey("jwk",k.privateKey);
+const{error}=await sb.from("user_keys").insert({pub,priv:pv});if(error)throw error;priv=k.privateKey;return pub}
+async function dec(c){if(!priv)await myKeys();return new TextDecoder().decode(await crypto.subtle.decrypt("RSA-OAEP",priv,unb(c)))}
+async function mineLoad(){const box=$("#mine");box.replaceChildren();
+const{data:my}=await sb.from("reports").select("*").eq("owner",me).order("created_at",{ascending:false});
+const{data:al}=await sb.from("alerts").select("*").eq("owner",me);
+if(!my?.length)box.append(h("p",{class:"m"},"Aún no has reportado ningún perrito."));
+(my||[]).forEach(r=>{const c=h("div",{class:"card"},h("img",{src:r.photo_url,alt:""}),h("div",{class:"t"},h("b",{},r.name),h("div",{class:"m"},r.zone),h("div",{class:"m"},r.open?"Buscándolo":"Ya apareció")));
+if(r.open)c.append(h("button",{class:"btn g full",onclick:async()=>{await sb.from("reports").update({open:false}).eq("id",r.id);mineLoad()}},"Ya apareció, cerrar reporte"));
+(al||[]).filter(a=>a.report_id==r.id).forEach(a=>{const row=h("div",{class:"full note"},"Mensaje cifrado…");c.append(row);
+dec(a.cipher).then(t=>{const[tel,...m]=t.split("|"),n=tel.replace(/\D/g,"");row.replaceChildren(h("b",{},"Alguien cree haberlo encontrado: "),m.join("|"),h("a",{class:"btn",href:"https://wa.me/"+(n.length==10?"52"+n:n),target:"_blank",rel:"noopener"},"Escribir por WhatsApp"))}).catch(()=>row.textContent="No se pudo abrir este mensaje.")});
+box.append(c)})}
+$("#go").onclick=async()=>{const f=$("#f0").files[0],res=$("#res");if(!f)return res.replaceChildren(h("p",{class:"m"},"Toma o elige una foto primero."));
+const q=await proc(f),z=$("#z0").value.trim().toLowerCase();
+const{data}=await sb.from("reports").select("*").eq("open",true).neq("owner",me).order("created_at",{ascending:false}).limit(500);
+const list=(data||[]).map(r=>({r,s:sim(q.fp,r.fp)+(z&&r.zone.toLowerCase().includes(z)?8:0)})).sort((a,b)=>b.s-a.s).slice(0,5);
+res.replaceChildren(h("p",{class:"m"},list.length?"Posibles coincidencias (parecido aproximado; confirma con el dueño):":"Todavía no hay reportes que se parezcan."));
+list.forEach(({r,s})=>{const t=h("input",{type:"tel",maxLength:20}),m=h("input",{maxLength:80}),form=h("div",{class:"full",hidden:true},h("label",{},"Tu WhatsApp"),t,h("label",{},"Dónde está y cómo se ve"),m,
+h("button",{class:"btn",onclick:async()=>{if(t.value.replace(/\D/g,"").length<10)return;
+const k=await crypto.subtle.importKey("jwk",r.pub,RSA,false,["encrypt"]),ct=await crypto.subtle.encrypt("RSA-OAEP",k,new TextEncoder().encode(t.value.trim()+"|"+m.value.trim()));
+const{error}=await sb.from("alerts").insert({report_id:r.id,owner:r.owner,cipher:b64(ct)});form.replaceChildren(h("b",{},error?"No se pudo enviar.":"Aviso enviado. Solo el dueño puede leer tu contacto."))}},"Avisar al dueño"));
+res.append(h("div",{class:"card"},h("img",{src:r.photo_url,alt:""}),h("div",{class:"t"},h("b",{},r.name),h("div",{class:"m"},r.zone),h("div",{class:"m"},r.notes||""),h("span",{class:"pill"},s+"% parecido")),
+h("button",{class:"btn g full",onclick:()=>form.hidden=false},"Creo que es mi coincidencia"),form))})};
+$("#pub").onclick=async()=>{const f=$("#f1").files[0],n=$("#n1").value.trim(),z=$("#z1").value.trim(),ok=$("#ok1");if(!f||!n||!z)return ok.textContent="Falta foto, nombre o zona.";
+$("#pub").disabled=true;try{const[p,pub]=await Promise.all([proc(f),myKeys()]),path=me+"/"+crypto.randomUUID()+".jpg";
+const up=await sb.storage.from("fotos").upload(path,p.blob,{contentType:"image/jpeg"});if(up.error)throw up.error;
+const{error}=await sb.from("reports").insert({name:n,zone:z,notes:$("#s1").value.trim(),photo_url:sb.storage.from("fotos").getPublicUrl(path).data.publicUrl,fp:p.fp,pub});if(error)throw error;
+ok.textContent="Reporte publicado. Revísalo en “Mis avisos”.";["#n1","#z1","#s1","#f1"].forEach(s=>$(s).value="")}catch(e){ok.textContent="No se pudo publicar: "+(e.message||"error")}$("#pub").disabled=false};
+$("#send").onclick=async()=>{const{error}=await sb.auth.signInWithOtp({email:$("#em").value.trim(),options:{emailRedirectTo:location.href}});$("#lm").textContent=error?"No se pudo enviar: "+error.message:"Listo, revisa tu correo y abre el enlace."};
+$("#out").onclick=async()=>{await sb.auth.signOut();location.reload()};
+async function start(){const{data:{session}}=await sb.auth.getSession();
+if(!session){$("#login").hidden=false;return}
+me=session.user.id;$("#login").hidden=true;$("#app").hidden=false;$("#nav").hidden=false}
+sb.auth.onAuthStateChange(()=>start());start();
+</script></body></html>
