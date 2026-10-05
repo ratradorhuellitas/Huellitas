@@ -38,6 +38,8 @@ nav button[aria-selected=true]{color:var(--ink);box-shadow:inset 0 3px var(--acc
 </div></main>
 <nav id="nav" hidden><button aria-selected="true" data-t="0">Encontré uno</button><button aria-selected="false" data-t="1">Perdí uno</button><button aria-selected="false" data-t="2">Mis avisos</button><button aria-selected="false" data-t="3">Ver todos</button></nav>
 <script>
+if(typeof supabase==="undefined"){const w=document.getElementById("warn");w.hidden=false;w.textContent="No cargó la librería de acceso. Abre este link directo en Chrome.";throw new Error("sin supabase")}
+window.addEventListener("error",e=>{const w=document.getElementById("warn");w.hidden=false;w.textContent="Error: "+e.message});
 const SUPABASE_URL="https://enkihffbccgscgtsxide.supabase.co", SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVua2loZmZiY2Nnc2NndHN4aWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExNDE5NDMsImV4cCI6MjEwNjcxNzk0M30.uTEu_1stmQpj973fS4vpXvc3Fy3BQJqjQC1MoxbQHSk";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY),$=s=>document.querySelector(s);
 const h=(t,a={},...k)=>{const e=document.createElement(t);for(const x in a)x=="class"?e.className=a[x]:e[x]=a[x];k.flat().forEach(c=>e.append(c));return e};
@@ -87,8 +89,7 @@ $("#send").onclick=async()=>{const{error}=await sb.auth.signInWithOtp({email:$("
 $("#anon").onclick=async()=>{const{error}=await sb.auth.signInAnonymously();if(error)$("#lm").textContent="No se pudo entrar: "+error.message};
 $("#ver").onclick=async()=>{const{error}=await sb.auth.verifyOtp({email:$("#em").value.trim(),token:$("#cd").value.trim(),type:"email"});$("#lm").textContent=error?"Código incorrecto o vencido. Pide uno nuevo.":""};
 $("#out").onclick=async()=>{await sb.auth.signOut();location.reload()};
-async function start(){const{data:{session}}=await sb.auth.getSession();
-if(!session){$("#login").hidden=false;return}
-me=session.user.id;$("#login").hidden=true;$("#app").hidden=false;$("#nav").hidden=false}
+async function start(){let session=null;try{session=await Promise.race([sb.auth.getSession().then(r=>r.data.session),new Promise(r=>setTimeout(()=>r(null),4000))])}catch(e){}
+$("#login").hidden=!!session;$("#app").hidden=!session;$("#nav").hidden=!session;if(session)me=session.user.id}
 sb.auth.onAuthStateChange(()=>start());start();
 </script></body></html>
