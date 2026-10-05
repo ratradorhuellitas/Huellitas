@@ -20,7 +20,7 @@ nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);b
 nav button{flex:1;border:0;background:none;color:var(--mut);font:600 13px inherit;padding:14px 2px}
 nav button[aria-selected=true]{color:var(--ink);box-shadow:inset 0 3px var(--acc)}[hidden]{display:none!important}
 </style></head><body><main>
-<h1>Huellitas MX</h1><p class="s">Perritos perdidos y encontrados, con tu contacto protegido.</p>
+<h1>Huellitas MX</h1><p class="s">Perritos perdidos y encontrados, con tu contacto protegido. <small>v6</small></p>
 <div id="warn" class="note" hidden></div>
 <section id="login" hidden><label>Tu correo (te enviamos un código para entrar)</label><input id="em" type="email" autocomplete="email">
 <button class="btn" id="send">Enviar código</button>
@@ -41,7 +41,7 @@ nav button[aria-selected=true]{color:var(--ink);box-shadow:inset 0 3px var(--acc
 if(typeof supabase==="undefined"){const w=document.getElementById("warn");w.hidden=false;w.textContent="No cargó la librería de acceso. Abre este link directo en Chrome.";throw new Error("sin supabase")}
 window.addEventListener("error",e=>{const w=document.getElementById("warn");w.hidden=false;w.textContent="Error: "+e.message});
 const SUPABASE_URL="https://enkihffbccgscgtsxide.supabase.co", SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVua2loZmZiY2Nnc2NndHN4aWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExNDE5NDMsImV4cCI6MjEwNjcxNzk0M30.uTEu_1stmQpj973fS4vpXvc3Fy3BQJqjQC1MoxbQHSk";
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY),$=s=>document.querySelector(s);
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{lock:(n,t,fn)=>fn(),persistSession:true,autoRefreshToken:true}}),$=s=>document.querySelector(s);
 const h=(t,a={},...k)=>{const e=document.createElement(t);for(const x in a)x=="class"?e.className=a[x]:e[x]=a[x];k.flat().forEach(c=>e.append(c));return e};
 let me,priv=null,reports=[],alerts=[];
 document.querySelectorAll("nav button").forEach(b=>b.onclick=async()=>{document.querySelectorAll("nav button").forEach(x=>x.setAttribute("aria-selected",x==b));[0,1,2,3].forEach(i=>$("#t"+i).hidden=i!=b.dataset.t);if(b.dataset.t==2)await mineLoad();if(b.dataset.t==3)await allLoad()});
@@ -86,7 +86,9 @@ const up=await sb.storage.from("fotos").upload(path,p.blob,{contentType:"image/j
 const{error}=await sb.from("reports").insert({name:n,zone:z,notes:$("#s1").value.trim(),photo_url:sb.storage.from("fotos").getPublicUrl(path).data.publicUrl,fp:p.fp,pub});if(error)throw error;
 ok.textContent="Reporte publicado. Revísalo en “Mis avisos”.";["#n1","#z1","#s1","#f1"].forEach(s=>$(s).value="")}catch(e){const m="No se pudo publicar: "+(e.message||e.error_description||JSON.stringify(e));ok.textContent=m;alert(m)}$("#pub").disabled=false};
 $("#send").onclick=async()=>{const{error}=await sb.auth.signInWithOtp({email:$("#em").value.trim()});if(error){$("#lm").textContent="No se pudo enviar: "+error.message;return}$("#cw").hidden=false;$("#lm").textContent="Listo. Revisa tu correo (y Spam) y escribe el código."};
-$("#anon").onclick=async()=>{$("#lm").textContent="Entrando…";const{error}=await sb.auth.signInAnonymously();if(error)$("#lm").textContent="No se pudo entrar: "+error.message};
+$("#anon").onclick=async()=>{const lm=$("#lm");lm.textContent="Entrando…";
+const t=setTimeout(()=>{lm.textContent="Tarda demasiado. Revisa tu internet o que Allow anonymous sign-ins esté activado en Supabase."},12000);
+try{const{data,error}=await sb.auth.signInAnonymously();clearTimeout(t);if(error)lm.textContent="No se pudo entrar: "+error.message;else{lm.textContent="";show(data.session)}}catch(e){clearTimeout(t);lm.textContent="Error: "+(e.message||e)}};
 $("#ver").onclick=async()=>{const{error}=await sb.auth.verifyOtp({email:$("#em").value.trim(),token:$("#cd").value.trim(),type:"email"});$("#lm").textContent=error?"Código incorrecto o vencido. Pide uno nuevo.":""};
 $("#out").onclick=async()=>{await sb.auth.signOut();location.reload()};
 let shown=false;
