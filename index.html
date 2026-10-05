@@ -78,11 +78,11 @@ const{data}=await sb.from("reports").select("*").eq("open",true).neq("owner",me)
 const list=(data||[]).map(r=>({r,s:sim(q.fp,r.fp)+(z&&r.zone.toLowerCase().includes(z)?8:0)})).sort((a,b)=>b.s-a.s).slice(0,5);
 res.replaceChildren(h("p",{class:"m"},list.length?"Posibles coincidencias (parecido aproximado; confirma con el dueño):":"Todavía no hay reportes que se parezcan."));
 list.forEach(({r,s})=>res.append(card(r,s)))};
-$("#pub").onclick=async()=>{const f=$("#f1").files[0],n=$("#n1").value.trim(),z=$("#z1").value.trim(),ok=$("#ok1");if(!f||!n||!z)return ok.textContent="Falta foto, nombre o zona.";
-$("#pub").disabled=true;try{const[p,pub]=await Promise.all([proc(f),myKeys()]),path=me+"/"+crypto.randomUUID()+".jpg";
+$("#pub").onclick=async()=>{const f=$("#f1").files[0],n=$("#n1").value.trim(),z=$("#z1").value.trim(),ok=$("#ok1");if(!f||!n||!z){ok.textContent="Falta foto, nombre o zona.";return}
+$("#pub").disabled=true;ok.textContent="Publicando… espera unos segundos.";try{const[p,pub]=await Promise.all([proc(f),myKeys()]),path=me+"/"+crypto.randomUUID()+".jpg";
 const up=await sb.storage.from("fotos").upload(path,p.blob,{contentType:"image/jpeg"});if(up.error)throw up.error;
 const{error}=await sb.from("reports").insert({name:n,zone:z,notes:$("#s1").value.trim(),photo_url:sb.storage.from("fotos").getPublicUrl(path).data.publicUrl,fp:p.fp,pub});if(error)throw error;
-ok.textContent="Reporte publicado. Revísalo en “Mis avisos”.";["#n1","#z1","#s1","#f1"].forEach(s=>$(s).value="")}catch(e){ok.textContent="No se pudo publicar: "+(e.message||"error")}$("#pub").disabled=false};
+ok.textContent="Reporte publicado. Revísalo en “Mis avisos”.";["#n1","#z1","#s1","#f1"].forEach(s=>$(s).value="")}catch(e){const m="No se pudo publicar: "+(e.message||e.error_description||JSON.stringify(e));ok.textContent=m;alert(m)}$("#pub").disabled=false};
 $("#send").onclick=async()=>{const{error}=await sb.auth.signInWithOtp({email:$("#em").value.trim()});if(error){$("#lm").textContent="No se pudo enviar: "+error.message;return}$("#cw").hidden=false;$("#lm").textContent="Listo. Revisa tu correo (y Spam) y escribe el código."};
 $("#anon").onclick=async()=>{const{error}=await sb.auth.signInAnonymously();if(error)$("#lm").textContent="No se pudo entrar: "+error.message};
 $("#ver").onclick=async()=>{const{error}=await sb.auth.verifyOtp({email:$("#em").value.trim(),token:$("#cd").value.trim(),type:"email"});$("#lm").textContent=error?"Código incorrecto o vencido. Pide uno nuevo.":""};
