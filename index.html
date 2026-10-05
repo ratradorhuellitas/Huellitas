@@ -17,13 +17,14 @@ input,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radiu
 .pill{background:var(--acc);color:#12263a;border-radius:99px;padding:2px 10px;font-weight:800;font-size:13px}
 .full{flex-basis:100%}.note{border-left:4px solid var(--acc);padding:6px 12px;color:var(--mut);margin:10px 0}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line)}
-nav button{flex:1;border:0;background:none;color:var(--mut);font:600 15px inherit;padding:14px 4px}
+nav button{flex:1;border:0;background:none;color:var(--mut);font:600 13px inherit;padding:14px 2px}
 nav button[aria-selected=true]{color:var(--ink);box-shadow:inset 0 3px var(--acc)}[hidden]{display:none!important}
 </style></head><body><main>
 <h1>Huellitas MX</h1><p class="s">Perritos perdidos y encontrados, con tu contacto protegido.</p>
 <div id="warn" class="note" hidden></div>
-<section id="login" hidden><label>Tu correo (te enviamos un enlace para entrar)</label><input id="em" type="email" autocomplete="email">
-<button class="btn" id="send">Enviar enlace</button><p id="lm" class="m"></p></section>
+<section id="login" hidden><label>Tu correo (te enviamos un código para entrar)</label><input id="em" type="email" autocomplete="email">
+<button class="btn" id="send">Enviar código</button>
+<div id="cw" hidden><label>Código que llegó a tu correo</label><input id="cd" inputmode="numeric" autocomplete="one-time-code" maxlength="10"><button class="btn" id="ver">Entrar</button></div><p id="lm" class="m"></p></section>
 <div id="app" hidden>
 <section id="t0"><label>Foto del perrito que encontraste</label><input id="f0" type="file" accept="image/*" capture="environment">
 <label>Zona o colonia (opcional)</label><input id="z0"><button class="btn" id="go">Buscar coincidencias</button><div id="res"></div></section>
@@ -32,14 +33,15 @@ nav button[aria-selected=true]{color:var(--ink);box-shadow:inset 0 3px var(--acc
 <div class="note">Tu teléfono no se guarda. Quien lo encuentre te escribe con un mensaje cifrado que solo tú puedes abrir.</div>
 <button class="btn" id="pub">Publicar reporte</button><p id="ok1" class="m"></p></section>
 <section id="t2" hidden><div id="mine"></div><button class="btn g" id="out">Cerrar sesión</button></section>
+<section id="t3" hidden><div id="all"></div></section>
 </div></main>
-<nav id="nav" hidden><button aria-selected="true" data-t="0">Encontré uno</button><button aria-selected="false" data-t="1">Perdí uno</button><button aria-selected="false" data-t="2">Mis avisos</button></nav>
+<nav id="nav" hidden><button aria-selected="true" data-t="0">Encontré uno</button><button aria-selected="false" data-t="1">Perdí uno</button><button aria-selected="false" data-t="2">Mis avisos</button><button aria-selected="false" data-t="3">Ver todos</button></nav>
 <script>
 const SUPABASE_URL="https://enkihffbccgscgtsxide.supabase.co", SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVua2loZmZiY2Nnc2NndHN4aWRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTExNDE5NDMsImV4cCI6MjEwNjcxNzk0M30.uTEu_1stmQpj973fS4vpXvc3Fy3BQJqjQC1MoxbQHSk";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY),$=s=>document.querySelector(s);
 const h=(t,a={},...k)=>{const e=document.createElement(t);for(const x in a)x=="class"?e.className=a[x]:e[x]=a[x];k.flat().forEach(c=>e.append(c));return e};
 let me,priv=null,reports=[],alerts=[];
-document.querySelectorAll("nav button").forEach(b=>b.onclick=async()=>{document.querySelectorAll("nav button").forEach(x=>x.setAttribute("aria-selected",x==b));[0,1,2].forEach(i=>$("#t"+i).hidden=i!=b.dataset.t);if(b.dataset.t==2)await mineLoad()});
+document.querySelectorAll("nav button").forEach(b=>b.onclick=async()=>{document.querySelectorAll("nav button").forEach(x=>x.setAttribute("aria-selected",x==b));[0,1,2,3].forEach(i=>$("#t"+i).hidden=i!=b.dataset.t);if(b.dataset.t==2)await mineLoad();if(b.dataset.t==3)await allLoad()});
 const load=f=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=URL.createObjectURL(f)});
 async function proc(file){const i=await load(file),c=document.createElement("canvas"),x=c.getContext("2d"),k=800/Math.max(i.width,i.height,800);
 c.width=i.width*k;c.height=i.height*k;x.drawImage(i,0,0,c.width,c.height);const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.8));
@@ -62,23 +64,26 @@ if(r.open)c.append(h("button",{class:"btn g full",onclick:async()=>{await sb.fro
 (al||[]).filter(a=>a.report_id==r.id).forEach(a=>{const row=h("div",{class:"full note"},"Mensaje cifrado…");c.append(row);
 dec(a.cipher).then(t=>{const[tel,...m]=t.split("|"),n=tel.replace(/\D/g,"");row.replaceChildren(h("b",{},"Alguien cree haberlo encontrado: "),m.join("|"),h("a",{class:"btn",href:"https://wa.me/"+(n.length==10?"52"+n:n),target:"_blank",rel:"noopener"},"Escribir por WhatsApp"))}).catch(()=>row.textContent="No se pudo abrir este mensaje.")});
 box.append(c)})}
+function card(r,s){const t=h("input",{type:"tel",maxLength:20}),m=h("input",{maxLength:80}),form=h("div",{class:"full",hidden:true},h("label",{},"Tu WhatsApp"),t,h("label",{},"Dónde está y cómo se ve"),m,
+h("button",{class:"btn",onclick:async()=>{if(t.value.replace(/\D/g,"").length<10)return;
+const k=await crypto.subtle.importKey("jwk",r.pub,RSA,false,["encrypt"]),ct=await crypto.subtle.encrypt("RSA-OAEP",k,new TextEncoder().encode(t.value.trim()+"|"+m.value.trim()));
+const{error}=await sb.from("alerts").insert({report_id:r.id,owner:r.owner,cipher:b64(ct)});form.replaceChildren(h("b",{},error?"No se pudo enviar.":"Aviso enviado. Solo el dueño puede leer tu contacto."))}},"Avisar al dueño"));
+return h("div",{class:"card"},h("img",{src:r.photo_url,alt:""}),h("div",{class:"t"},h("b",{},r.name),h("div",{class:"m"},r.zone),h("div",{class:"m"},r.notes||""),(s==null?"":h("span",{class:"pill"},s+"% parecido"))),
+h("button",{class:"btn g full",onclick:()=>form.hidden=false},"Creo que es mi coincidencia"),form)}
+async function allLoad(){const box=$("#all");box.replaceChildren(h("p",{class:"m"},"Cargando…"));const{data}=await sb.from("reports").select("*").eq("open",true).order("created_at",{ascending:false}).limit(50);box.replaceChildren(h("p",{class:"m"},data?.length?"Perritos reportados como perdidos (los más recientes):":"Todavía no hay reportes."));(data||[]).forEach(r=>box.append(card(r,null)))}
 $("#go").onclick=async()=>{const f=$("#f0").files[0],res=$("#res");if(!f)return res.replaceChildren(h("p",{class:"m"},"Toma o elige una foto primero."));
 const q=await proc(f),z=$("#z0").value.trim().toLowerCase();
 const{data}=await sb.from("reports").select("*").eq("open",true).neq("owner",me).order("created_at",{ascending:false}).limit(500);
 const list=(data||[]).map(r=>({r,s:sim(q.fp,r.fp)+(z&&r.zone.toLowerCase().includes(z)?8:0)})).sort((a,b)=>b.s-a.s).slice(0,5);
 res.replaceChildren(h("p",{class:"m"},list.length?"Posibles coincidencias (parecido aproximado; confirma con el dueño):":"Todavía no hay reportes que se parezcan."));
-list.forEach(({r,s})=>{const t=h("input",{type:"tel",maxLength:20}),m=h("input",{maxLength:80}),form=h("div",{class:"full",hidden:true},h("label",{},"Tu WhatsApp"),t,h("label",{},"Dónde está y cómo se ve"),m,
-h("button",{class:"btn",onclick:async()=>{if(t.value.replace(/\D/g,"").length<10)return;
-const k=await crypto.subtle.importKey("jwk",r.pub,RSA,false,["encrypt"]),ct=await crypto.subtle.encrypt("RSA-OAEP",k,new TextEncoder().encode(t.value.trim()+"|"+m.value.trim()));
-const{error}=await sb.from("alerts").insert({report_id:r.id,owner:r.owner,cipher:b64(ct)});form.replaceChildren(h("b",{},error?"No se pudo enviar.":"Aviso enviado. Solo el dueño puede leer tu contacto."))}},"Avisar al dueño"));
-res.append(h("div",{class:"card"},h("img",{src:r.photo_url,alt:""}),h("div",{class:"t"},h("b",{},r.name),h("div",{class:"m"},r.zone),h("div",{class:"m"},r.notes||""),h("span",{class:"pill"},s+"% parecido")),
-h("button",{class:"btn g full",onclick:()=>form.hidden=false},"Creo que es mi coincidencia"),form))})};
+list.forEach(({r,s})=>res.append(card(r,s)))};
 $("#pub").onclick=async()=>{const f=$("#f1").files[0],n=$("#n1").value.trim(),z=$("#z1").value.trim(),ok=$("#ok1");if(!f||!n||!z)return ok.textContent="Falta foto, nombre o zona.";
 $("#pub").disabled=true;try{const[p,pub]=await Promise.all([proc(f),myKeys()]),path=me+"/"+crypto.randomUUID()+".jpg";
 const up=await sb.storage.from("fotos").upload(path,p.blob,{contentType:"image/jpeg"});if(up.error)throw up.error;
 const{error}=await sb.from("reports").insert({name:n,zone:z,notes:$("#s1").value.trim(),photo_url:sb.storage.from("fotos").getPublicUrl(path).data.publicUrl,fp:p.fp,pub});if(error)throw error;
 ok.textContent="Reporte publicado. Revísalo en “Mis avisos”.";["#n1","#z1","#s1","#f1"].forEach(s=>$(s).value="")}catch(e){ok.textContent="No se pudo publicar: "+(e.message||"error")}$("#pub").disabled=false};
-$("#send").onclick=async()=>{const{error}=await sb.auth.signInWithOtp({email:$("#em").value.trim(),options:{emailRedirectTo:location.href}});$("#lm").textContent=error?"No se pudo enviar: "+error.message:"Listo, revisa tu correo y abre el enlace."};
+$("#send").onclick=async()=>{const{error}=await sb.auth.signInWithOtp({email:$("#em").value.trim()});if(error){$("#lm").textContent="No se pudo enviar: "+error.message;return}$("#cw").hidden=false;$("#lm").textContent="Listo. Revisa tu correo (y Spam) y escribe el código."};
+$("#ver").onclick=async()=>{const{error}=await sb.auth.verifyOtp({email:$("#em").value.trim(),token:$("#cd").value.trim(),type:"email"});$("#lm").textContent=error?"Código incorrecto o vencido. Pide uno nuevo.":""};
 $("#out").onclick=async()=>{await sb.auth.signOut();location.reload()};
 async function start(){const{data:{session}}=await sb.auth.getSession();
 if(!session){$("#login").hidden=false;return}
